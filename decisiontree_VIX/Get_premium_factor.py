@@ -66,64 +66,57 @@ if __name__ == '__main__':
 
     PBarr = get_Arr('../decisiontree_VIX/PBRTNdata.csv', arr)
     MEarr = get_Arr('../decisiontree_VIX/MERTNdata.csv', arr)
-    MMarr = get_Arr('../decisiontree_VIX/MMRTNdata.csv', arr)
 
     if const_Decile == True:
         MEarr['SMB'] = MEarr['Lo 10'] - MEarr['Hi 10']
         MEarr['SBcov'] = MEarr['Lo 10'].rolling(252).cov(MEarr['Hi 10'].rolling(252))
         PBarr['HML'] = PBarr['Hi 10'] - PBarr['Lo 10']
         PBarr['HLcov'] = PBarr['Hi 10'].rolling(252).cov(PBarr['Lo 10'].rolling(252))
-        MMarr['MOM'] = MMarr['Hi 10'] - MMarr['Lo 10']
-        MMarr['MMcov'] = MMarr['Hi 10'].rolling(252).cov(MMarr['Lo 10'].rolling(252))
 
     else:
         MEarr['SMB'] = MEarr['Lo 20'] - MEarr['Hi 20']
         MEarr['SBcov'] = MEarr['Lo 20'].rolling(252).cov(MEarr['Hi 20'].rolling(252))
         PBarr['HML'] = PBarr['Hi 20'] - PBarr['Lo 20']
         PBarr['HLcov'] = PBarr['Hi 20'].rolling(252).cov(PBarr['Lo 20'].rolling(252))
-        MMarr['MOM'] = MMarr['Hi 20'] - MMarr['Lo 20']
-        MMarr['MMcov'] = MMarr['Hi 20'].rolling(252).cov(MMarr['Lo 20'].rolling(252))
 
-    arr = pd.concat([arr, MEarr['SMB'], PBarr['HML'], MMarr['MOM'], MEarr['SBcov'], PBarr['HLcov'], MMarr['MMcov']], axis=1).dropna()
+    arr = pd.concat([arr, MEarr['SMB'], PBarr['HML'], MEarr['SBcov'], PBarr['HLcov']], axis=1).dropna()
 
     arr['SMB'] = arr['SMB'].div(100)
     arr['HML'] = arr['HML'].div(100)
-    arr['SMB_mom'] = (1 + arr.SMB).rolling(22).apply(np.prod)
-    arr['HML_mom'] = (1 + arr.HML).rolling(22).apply(np.prod)
-    arr['MOM_mom'] = (1 + arr.HML).rolling(22).apply(np.prod)
+    arr['MKT'] = arr['S&PCOMP']/ arr['S&PCOMP'].shift(1) - 1
+    arr['SMB_mom'] = (1 + arr.SMB).rolling(252).apply(np.prod)
+    arr['HML_mom'] = (1 + arr.HML).rolling(252).apply(np.prod)
+    arr['MKT_mom'] = (1 + arr.MKT).rolling(252).apply(np.prod)
 
     arr['CBOEVIX_d'] = arr['CBOEVIX'] / 100 / np.sqrt(252)
     arr['CBOEVIX_roll'] = arr['CBOEVIX_d'].rolling(252).mean().rolling(2).mean()
     arr['CBOEVIX_spr'] = arr['CBOEVIX_d'] - arr['CBOEVIX_roll']
 
+    arr['MKTVol'] = arr['MKT'].apply(lambda x: np.square(x)).rolling(252).mean()
     arr['SMBVol'] = arr['SMB'].apply(lambda x: np.square(x)).rolling(252).mean()
     arr['HMLVol'] = arr['HML'].apply(lambda x: np.square(x)).rolling(252).mean()
-    arr['MOMVol'] = arr['MOM'].apply(lambda x: np.square(x)).rolling(252).mean()
+    arr['MSCov'] = arr['MKT'].rolling(252).cov(arr['SMB'].rolling(252)) * 2
+    arr['MHCov'] = arr['MKT'].rolling(252).cov(arr['HML'].rolling(252)) * 2
     arr['SHCov'] = arr['SMB'].rolling(252).cov(arr['HML'].rolling(252)) * 2
-    arr['SMCov'] = arr['SMB'].rolling(252).cov(arr['MOM'].rolling(252)) * 2
-    arr['HMCov'] = arr['HML'].rolling(252).cov(arr['MOM'].rolling(252)) * 2
 
     arr = arr.dropna()
 
-    testarr = arr[['CBOEVIX_spr', 'SMBVol', 'HMLVol', 'MOMVol','SHCov','SMCov','HMCov']]
+    testarr = arr[['CBOEVIX_spr', 'MKTVol', 'SMBVol', 'HMLVol','MSCov','MHCov','SHCov']]
     premiumArr = iterativePremium(252, testarr)
-    premiumArr = pd.DataFrame(premiumArr[1:], columns=['SMBp', 'HMLp', 'MOMp', 'SHCovp', 'SMCovp', 'HMCovp','Rsqr'], index=testarr[252:].index)
+    premiumArr = pd.DataFrame(premiumArr[1:], columns=['MKTp','SMBp', 'HMLp','MSCovp','MHCovp','SHCovp','Rsqr'], index=testarr[252:].index)
     arr = pd.concat([arr, premiumArr], axis=1).dropna()
 
-    # make label by month forward returns
-    arr['classifier'] = 1
-    prdt_prd = 5
+    # make label by month fo
+    prdt_prd = 22
+    maxFactorArr = np.array([])
     for index in range(prdt_prd, len(arr)):
-        if (arr.SMB.iloc[index-(prdt_prd-1):index] + 1).prod() > 1.00 and (arr.HML.iloc[index - (prdt_prd-1):index] + 1).prod() > 1.00:
-            arr.classifier.iloc[index - prdt_prd] = 0
-        elif (arr.SMB.iloc[index - (prdt_prd-1):index] + 1).prod() > 1.00 and (arr.HML.iloc[index - (prdt_prd-1):index] + 1).prod() <= 1.00:
-            arr.classifier.iloc[index - prdt_prd] = 1
-        elif (arr.SMB.iloc[index - (prdt_prd-1):index] + 1).prod() <= 1.00 and (arr.HML.iloc[index - (prdt_prd-1):index] + 1).prod() > 1.00:
-            arr.classifier.iloc[index - prdt_prd] = 2
-        elif (arr.SMB.iloc[index - (prdt_prd-1):index] + 1).prod() <= 1.00 and (arr.HML.iloc[index - (prdt_prd-1):index] + 1).prod() <= 1.00:
-            arr.classifier.iloc[index - prdt_prd] = 3
-        else:
-            arr.classifier.iloc[index - prdt_prd] = 4
+        MKT_rtn = (arr.MKT.iloc[index-(prdt_prd-1):index] + 1).prod()
+        SMB_rtn = (arr.SMB.iloc[index-(prdt_prd-1):index] + 1).prod()
+        HML_rtn = (arr.HML.iloc[index-(prdt_prd-1):index] + 1).prod()
+        maxFactor = np.array([MKT_rtn, SMB_rtn, HML_rtn]).argmax()
+        maxFactorArr = np.hstack([maxFactorArr,maxFactor])
+    arr = arr[:len(arr)-prdt_prd]
+    arr['classifier'] = maxFactorArr
 
     arr.to_csv('../decisiontree_VIX/sourcedata.csv')
     # we've just made backdata set completely. Now task only left is testing iterative DecisionTree Model
