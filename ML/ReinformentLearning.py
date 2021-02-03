@@ -18,7 +18,7 @@ def get_variables(train_size):
 def discount_rewards(r, gamma):
     discounted_r = np.zeros_like(r)
     running_add = 0
-    for t in reversed(range(0, r.size)):
+    for t in range(0, r.size):
         running_add = running_add*gamma + r[t]
         discounted_r[t] = running_add
     return discounted_r
@@ -35,11 +35,11 @@ def step(a, arr, arr_idx, fwd_idx):
 def reinforceLearning(train_size, model_load, learning_period):
 
     variables = get_variables(train_size=train_size)
-    hist = 21
+    hist = 63
     inputdim = hist * 6
     iterations = 801
     update_period = 10
-    gamma = 0.9
+    gamma = 0.8254 #set weight of 6 month past reward become 0.01 
     #model_load = False
 
     model = tf.keras.Sequential()
@@ -109,7 +109,7 @@ if __name__ == '__main__':
 
     learning_period = 21
     firsttime = False
-    for idx in range(2117, 2260, learning_period):
+    for idx in range(0, 2260, learning_period):
         if firsttime == True:
             model_load = False
             firsttime = False
