@@ -30,7 +30,7 @@ iterations = 101
 update_period = 10
 gamma = 0.9
 
-variables = get_variables(test_size = 1500)
+variables = get_variables(test_size = 0)
 
 model = tf.keras.Sequential()
 model.add(tf.keras.layers.Dense(128, input_dim=inputdim, activation='relu'))
@@ -38,15 +38,24 @@ model.add(tf.keras.layers.Dense(52, activation='relu'))
 model.add(tf.keras.layers.Dense(2, activation='softmax'))
 optimizer = tf.keras.optimizers.Adam(learning_rate=0.001)
 compute_loss = tf.keras.losses.SparseCategoricalCrossentropy(from_logits=True)
-model.load_weights('./weights/test700.h5')
+
+learning_period= 21
+
+
 
 memory = []
 s = []
 score = 0
 done = False
-startpoint = hist
+startpoint = 500
+model_date = startpoint
 fwd_idx = 5
+model.load_weights('./weights/test_historic_'+ str(model_date) +'.h5')
+
 for idx in range(startpoint, len(variables) - fwd_idx, fwd_idx):
+    if idx >= model_date + 21:
+        model_date += 21
+        model.load_weights('./weights/test_historic_' + str(model_date) + '.h5')
     s = np.asmatrix(np.concatenate(variables[idx - hist:idx]))
     if idx + fwd_idx >= len(variables):
         break
