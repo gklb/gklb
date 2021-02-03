@@ -109,7 +109,7 @@ if __name__ == '__main__':
 
     learning_period = 21
     firsttime = False
-    for idx in range(1298+21, 2250, learning_period):
+    for idx in range(2117, 2260, learning_period):
         if firsttime == True:
             model_load = False
             firsttime = False
