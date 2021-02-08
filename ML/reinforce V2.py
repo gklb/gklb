@@ -24,8 +24,9 @@ def findgamma(varLen, maxRewardPeriod, stopSlope):
     #to give premium to recent data, should make bandwidth formula of time
     #As length of series increase, gamma should be changed for longer series
     temp_idx = 0
-    for gamma in range(0.9,1,0.001):
-        for idx in range(varLen):
+    for gamma_r in range(800,1000, 1):
+        gamma = gamma_r/1000
+        for idx in range(1,varLen):
             if gammaDrvF(gamma, idx) <= stopSlope:
                 temp_idx = idx
                 break
@@ -55,7 +56,7 @@ def reinforceLearning(train_size,
 
     variables = get_variables(train_size=train_size,direct=inputdata_direct)
     gamma = findgamma(train_size,maxRewardPeriod,stopSlope)
-    inputdim = hist * len(variables)
+    inputdim = hist * len(variables[-1])
     #model_load = False
 
     model = tf.keras.Sequential()
@@ -120,17 +121,17 @@ def reinforceLearning(train_size,
 
 if __name__ == '__main__':
 
-    inputdata_direct = './pickle_var/variables.pkl'
+    inputdata_direct = './pickle_var/variables1.pkl'
     learning_period = 21
-    hist = 21
+    hist = 63
     iterations = 801
     update_period = 10
     stopSlope = 0.01
-    maxRewardPeriod = 0.2
+    maxRewardPeriod = 0.3
     save_direct = './weights'
 
     firsttime = True
-    for idx in range(0, 2260, learning_period):
+    for idx in range(500, 2260, learning_period):
         if firsttime == True:
             model_load = False
             firsttime = False
