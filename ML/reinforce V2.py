@@ -9,12 +9,15 @@ def get_variables(train_size,direct):
     arr = arr[:train_size]
     return arr.values.tolist()
 
-def discount_rewards(r, gamma):
+def discount_rewards(r, gamma, random_rate):
     discounted_r = np.zeros_like(r)
     running_add = 0
     for t in range(0, r.size): # give more weight one recent value
         running_add = running_add*gamma + r[t]
         discounted_r[t] = running_add
+    for t in range(0, r.size):
+        discounted_r[t] = random.choices([discounted_r[t],-discounted_r[t]],weights=[random_rate,1000-random_rate], k=1)
+        #give false information to escape from false local optimal
     return discounted_r
 
 def gammaDrvF(gamma,n):
@@ -59,6 +62,7 @@ def reinforceLearning(train_data,
 
     variables = train_data[:train_size].values.tolist()
     gamma = 0.9153 #-> rewards after 52weeks(9153), 26weeks(0.8376) 0.01% #findgamma(train_size,maxRewardPeriod,stopSlope)
+    former_max = 0
     inputdim = hist * len(variables[-1])
     #model_load = False
 
@@ -103,20 +107,25 @@ def reinforceLearning(train_data,
 
         scores.append(score)
         memory=np.array(memory)
-        memory[:,1]=discount_rewards(memory[:,1],gamma)
+        if former_max == np.max(scores[-50:]):
+            random_rate = 200
+        else:
+            random_rate = 1
+        memory[:,1]=discount_rewards(memory[:,1],gamma, random_rate)
 
         for grads, r in memory:
             for ix, grad in enumerate(grads):
-                gradBuffer[ix] += grad * r
+                gradBuffer[ix] += grad*r
 
         if iter % update_period == 0:
             optimizer.apply_gradients(zip(gradBuffer,model.trainable_variables))
             for ix, grad in enumerate(gradBuffer):
                 gradBuffer[ix] = grad * 0
 
-        if iter % 10 == 0:
+        if iter % update_period == 0:
             print("{} Learning  {}  Score  {}   Var  {}   Max  {}   Min  {}"
-                  .format(train_size, iter, np.mean(scores[-10:]), np.std(scores[-10:]), np.max(scores[-10:]), np.min(scores[-10:])))
+                  .format(train_size, iter, np.mean(scores[-50:]), np.std(scores[-50:]), np.max(scores[-50:]), np.min(scores[-50:])))
+        former_max = np.max(scores[-50:])
 
         if iter % 400 == 0:
             model.save_weights(save_direct+'/test_historic_'+str(train_size)+'.h5')
@@ -125,11 +134,11 @@ def reinforceLearning(train_data,
 
 if __name__ == '__main__':
 
-    inputdata_direct = './pickle_var/variables1_2.pkl'
+    inputdata_direct = './pickle_var/variables1.pkl'
     learning_period = 21
     hist = 63
     iterations = 801
-    update_period = 10
+    update_period = 50
     stopSlope = 0.01
     maxRewardPeriod = 0.3
     save_direct = './weights'
