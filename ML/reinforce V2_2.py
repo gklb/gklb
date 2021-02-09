@@ -138,7 +138,7 @@ def reinforceLearning(train_data,
     model.save_weights(save_direct+'/test_historic_'+str(train_size)+'.h5')
     with open(save_direct+'/log'+str(train_size)+'.txt', 'w') as f:
         for line in iter_log:
-            f.write(str(iter_log)+'\n')
+            f.write(str(line)+'\n')
 
 
 if __name__ == '__main__':
