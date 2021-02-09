@@ -16,7 +16,7 @@ def discount_rewards(r, gamma, random_rate):
         running_add = running_add*gamma + r[t]
         discounted_r[t] = running_add
     for t in range(0, r.size):
-        discounted_r[t] = random.choices([discounted_r[t],-discounted_r[t]],weights=[random_rate,1000-random_rate], k=1)
+        discounted_r[t] = random.choices([discounted_r[t],-discounted_r[t]],weights=[1000-random_rate,random_rate], k=1)
         #give false information to escape from false local optimal
     return discounted_r
 
