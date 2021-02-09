@@ -123,7 +123,7 @@ def reinforceLearning(train_data,
             print("{} Learning  {}  Score  {}   Var  {}   Max  {}   Min  {}"
                   .format(train_size, iter, np.mean(scores[-50:]), np.std(scores[-50:]), np.max(scores[-50:]), np.min(scores[-50:])))
             if former_max == np.max(scores[-50:]):
-                random_rate = 100
+                random_rate = 50
             else:
                 random_rate = 1
             former_max = np.max(scores[-50:])
