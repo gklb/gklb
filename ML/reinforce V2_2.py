@@ -85,6 +85,7 @@ def reinforceLearning(train_data,
         gradBuffer[ix] = grad * 0
 
     scores = []
+    iter_log = []
     with tqdm(range(iterations)) as tqd:
         for iter in tqd:
 
@@ -123,8 +124,8 @@ def reinforceLearning(train_data,
 
             if iter % update_period == 0:
                 tqd.set_postfix(Time=train_size, Score=np.mean(scores[-50:]), STD=np.std(scores[-50:]), MAX=np.max(scores[-50:]), Min=np.min(scores[-50:]))
-                #print("{} Learning  {}  Score  {}   Var  {}   Max  {}   Min  {}"
-                #      .format(train_size, iter, np.mean(scores[-50:]), np.std(scores[-50:]), np.max(scores[-50:]), np.min(scores[-50:])))
+                iter_log.append("{} Learning  {}  Score  {}   Var  {}   Max  {}   Min  {}"
+                      .format(train_size, iter, np.mean(scores[-50:]), np.std(scores[-50:]), np.max(scores[-50:]), np.min(scores[-50:])))
                 if former_max == np.max(scores[-50:]):
                     random_rate = 100
                 else:
@@ -135,10 +136,13 @@ def reinforceLearning(train_data,
                 model.save_weights(save_direct+'/test_historic_'+str(train_size)+'.h5')
 
     model.save_weights(save_direct+'/test_historic_'+str(train_size)+'.h5')
+    with open(save_direct+'/log'+str(train_size)+'.txt', 'w') as f:
+        a.write(iter_log)
+
 
 if __name__ == '__main__':
 
-    inputdata_direct = './pickle_var/variables1.pkl'
+    inputdata_direct = './pickle_var/variables1_2.pkl'
     learning_period = 21
     hist = 63
     iterations = 801
@@ -150,8 +154,8 @@ if __name__ == '__main__':
     with open(inputdata_direct, 'rb') as f:
         arr = pickle.load(f)
 
-    firsttime = True
-    for idx in range(500, len(arr), learning_period):
+    firsttime = False
+    for idx in range(773, len(arr), learning_period):
         if firsttime == True:
             model_load = False
             firsttime = False
