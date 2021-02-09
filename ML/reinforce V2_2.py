@@ -137,7 +137,8 @@ def reinforceLearning(train_data,
 
     model.save_weights(save_direct+'/test_historic_'+str(train_size)+'.h5')
     with open(save_direct+'/log'+str(train_size)+'.txt', 'w') as f:
-        a.write(iter_log)
+        for line in iter_log:
+            f.write(str(iter_log)+'\n')
 
 
 if __name__ == '__main__':
@@ -145,7 +146,7 @@ if __name__ == '__main__':
     inputdata_direct = './pickle_var/variables1_2.pkl'
     learning_period = 21
     hist = 63
-    iterations = 801
+    iterations = 11
     update_period = 50
     stopSlope = 0.01
     maxRewardPeriod = 0.3
