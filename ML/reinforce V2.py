@@ -63,6 +63,7 @@ def reinforceLearning(train_data,
     variables = train_data[:train_size].values.tolist()
     gamma = 0.9153 #-> rewards after 52weeks(9153), 26weeks(0.8376) 0.01% #findgamma(train_size,maxRewardPeriod,stopSlope)
     former_max = 0
+    random_rate = 1
     inputdim = hist * len(variables[-1])
     #model_load = False
 
@@ -107,10 +108,6 @@ def reinforceLearning(train_data,
 
         scores.append(score)
         memory=np.array(memory)
-        if former_max == np.max(scores[-50:]):
-            random_rate = 200
-        else:
-            random_rate = 1
         memory[:,1]=discount_rewards(memory[:,1],gamma, random_rate)
 
         for grads, r in memory:
@@ -125,7 +122,11 @@ def reinforceLearning(train_data,
         if iter % update_period == 0:
             print("{} Learning  {}  Score  {}   Var  {}   Max  {}   Min  {}"
                   .format(train_size, iter, np.mean(scores[-50:]), np.std(scores[-50:]), np.max(scores[-50:]), np.min(scores[-50:])))
-        former_max = np.max(scores[-50:])
+            if former_max == np.max(scores[-50:]):
+                random_rate = 100
+            else:
+                random_rate = 1
+            former_max = np.max(scores[-50:])
 
         if iter % 400 == 0:
             model.save_weights(save_direct+'/test_historic_'+str(train_size)+'.h5')
