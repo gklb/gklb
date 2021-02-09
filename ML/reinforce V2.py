@@ -139,7 +139,7 @@ if __name__ == '__main__':
     learning_period = 21
     hist = 63
     iterations = 801
-    update_period = 50
+    update_period = 10
     stopSlope = 0.01
     maxRewardPeriod = 0.3
     save_direct = './weights'
