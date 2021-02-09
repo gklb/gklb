@@ -116,7 +116,7 @@ def reinforceLearning(train_data,
 
         if iter % 10 == 0:
             print("{} Learning  {}  Score  {}   Var  {}   Max  {}   Min  {}"
-                  .format(train_size, iter, np.mean(scores[-10:]), np.std(scores[-10:], np.max(scores[-10:], np.min(scores[-10:])))))
+                  .format(train_size, iter, np.mean(scores[-10:]), np.std(scores[-10:]), np.max(scores[-10:]), np.min(scores[-10:])))
 
         if iter % 400 == 0:
             model.save_weights(save_direct+'/test_historic_'+str(train_size)+'.h5')
@@ -125,7 +125,7 @@ def reinforceLearning(train_data,
 
 if __name__ == '__main__':
 
-    inputdata_direct = './pickle_var/variables1.pkl'
+    inputdata_direct = './pickle_var/variables1_2.pkl'
     learning_period = 21
     hist = 63
     iterations = 801
