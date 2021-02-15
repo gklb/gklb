@@ -3,6 +3,8 @@ import pickle
 import tensorflow as tf
 import random
 from tqdm import tqdm
+import os
+os.environ["CUDA_VISIBLE_DEVICES"]="-1"
 
 def get_variables(train_size,direct):
     with open(direct, 'rb') as f:
@@ -144,19 +146,19 @@ def reinforceLearning(train_data,
 if __name__ == '__main__':
 
     inputdata_direct = './pickle_var/variables1_2.pkl'
-    learning_period = 21
+    learning_period = 63
     hist = 63
-    iterations = 11
+    iterations = 801
     update_period = 50
     stopSlope = 0.01
     maxRewardPeriod = 0.3
-    save_direct = './weights'
+    save_direct = './weights1_2'
 
     with open(inputdata_direct, 'rb') as f:
         arr = pickle.load(f)
 
-    firsttime = False
-    for idx in range(773, len(arr), learning_period):
+    firsttime = True
+    for idx in range(500, len(arr), learning_period):
         if firsttime == True:
             model_load = False
             firsttime = False
