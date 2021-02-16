@@ -93,9 +93,7 @@ def reinforceLearning(train_data,
 
             memory=[]
             score=0
-            startpoint = len(variables)- 756 + random.randrange(0,hist)
-            if startpoint<0:
-                startpoint = hist + random.randrange(0,hist)
+            startpoint = max(len(variables) - 756 + random.randrange(0,hist), hist + random.randrange(0,hist))
             fwd_idx = 5
 
             for idx in range(startpoint,len(variables)-fwd_idx,fwd_idx):
