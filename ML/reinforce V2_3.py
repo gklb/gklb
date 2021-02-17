@@ -45,7 +45,7 @@ def step(a, arr, arr_idx, fwd_idx):
     if a == 2: # Bull
         r = gain
     elif a == 1: # Neutral
-        r = 0
+        r = -gain/10
     else: # Bear
         r = -gain
     return r
@@ -64,7 +64,7 @@ def reinforceLearning(train_data,
                       ):
 
     variables = train_data[:train_size].values.tolist()
-    gamma = 0.9153 #-> rewards after 52weeks(9153), 26weeks(0.8376) 0.01% #findgamma(train_size,maxRewardPeriod,stopSlope)
+    gamma = 0.8376 #-> rewards after 52weeks(9153), 26weeks(0.8376), 13weeks(0.7017), 7weeks(0.5179) 0.01% #findgamma(train_size,maxRewardPeriod,stopSlope)
     former_max = 0
     random_rate = 1
     inputdim = hist * len(variables[-1])
