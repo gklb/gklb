@@ -130,19 +130,25 @@ def reinforceLearning(train_data,
                     gradBuffer[ix] += grad*r
 
             if iter % update_period == 0:
-                optimizer.apply_gradients(zip(gradBuffer,model.trainable_variables))
-                for ix, grad in enumerate(gradBuffer):
-                    gradBuffer[ix] = grad * 0
 
-            if iter % update_period == 0:
-                tqd.set_postfix(Time=train_size, Score=np.mean(scores[-50:]), STD=np.std(scores[-50:]), MAX=np.max(scores[-50:]), Min=np.min(scores[-50:]))
-                iter_log.append("{} Learning  {}  Score  {}   Var  {}   Max  {}   Min  {}"
-                      .format(train_size, iter, np.mean(scores[-50:]), np.std(scores[-50:]), np.max(scores[-50:]), np.min(scores[-50:])))
-                if former_max == np.max(scores[-50:]):
+                EarlyStopped = False
+                if iter > 128 and np.std(scores[-64:]) >= np.std(scores[-128:-64]) and np.max(scores[-64:]) <= np.max(scores[-128:-64]):
+                    EarlyStopped = True
+                    break
+
+                tqd.set_postfix(Time=train_size, Score=np.mean(scores[-64:]), STD=np.std(scores[-64:]), MAX=np.max(scores[-64:]), Min=np.min(scores[-64:]), ES=EarlyStopped)
+                iter_log.append("{} Learning  {}  Score  {}   Var  {}   Max  {}   Min  {}   ES  {}"
+                      .format(train_size, iter, np.mean(scores[-64:]), np.std(scores[-64:]), np.max(scores[-64:]), np.min(scores[-64:]), EarlyStopped))
+                if former_max == np.max(scores[-64:]):
                     random_rate = 100
                 else:
                     random_rate = 1
-                former_max = np.max(scores[-50:])
+                former_max = np.max(scores[-64:])
+
+            if iter % update_period == 0:
+                optimizer.apply_gradients(zip(gradBuffer,model.trainable_variables))
+                for ix, grad in enumerate(gradBuffer):
+                    gradBuffer[ix] = grad * 0
 
             if iter % 400 == 0:
                 model.save_weights(save_direct+'/test_historic_'+str(train_size)+'.h5')
@@ -155,15 +161,15 @@ def reinforceLearning(train_data,
 
 if __name__ == '__main__':
 
-    basedir = 'C:/pythonProject_tf/textAnalysis'
-    inputdata_direct = basedir+ '/pickle_var/variables1_2.pkl'
+    basedir = 'C:/Users/admin/PycharmProjects/pythonProject_tf_2'
+    inputdata_direct = basedir+ '/pickle_var/variables1.pkl'
     learning_period = 21
     hist = 63
     iterations = 1024
     update_period = 32
     stopSlope = 0.01
     maxRewardPeriod = 0.3
-    save_direct = basedir + '/weights'
+    save_direct = basedir + '/weights/reinforce/weights1'
 
     with open(inputdata_direct, 'rb') as f:
         arr = pickle.load(f)
