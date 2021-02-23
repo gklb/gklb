@@ -1,6 +1,7 @@
 '''참고
 https://tykimos.github.io/2017/01/27/Keras_Talk/ about keras , myth
 https://rfriend.tistory.com/553 construction DNN model
+출처: https://3months.tistory.com/424 [Deep Play]
 '''
 
 import numpy as np
@@ -10,9 +11,12 @@ import random
 from tqdm import tqdm
 import os
 from sklearn.preprocessing import StandardScaler
-scaler = StandardScaler()
 import torch
+from tensorflow.keras.callbacks import EarlyStopping
+from tensorflow.keras.callbacks import ModelCheckpoint
 from tqdm.keras import TqdmCallback
+
+scaler = StandardScaler()
 os.environ["CUDA_VISIBLE_DEVICES"]="-1"
 
 def labeling(arr):
@@ -65,8 +69,8 @@ def DNN_Classify(train_data,
                       ):
 
     variables = train_data.iloc[:train_size].copy()
-    gainArr, features = preprocFeatures(variables.drop('Label', axis=1).copy())
-    gainArr = gainArr.values.tolist()[hist:]
+    _, features = preprocFeatures(variables.drop('Label', axis=1).copy())
+    #gainArr = gainArr.values.tolist()[hist:]
 
     features = flattenSeries(features,hist)
     labels = torch.as_tensor(variables.Label.iloc[hist:].copy().values)
@@ -82,25 +86,29 @@ def DNN_Classify(train_data,
     optimizer = tf.keras.optimizers.Adam(learning_rate=0.001)
     model.compile(optimizer=optimizer, loss='categorical_crossentropy')
 
+    early_stopping = EarlyStopping(monitor='loss', mode='min', verbose=0, patience=50)
+    mc = ModelCheckpoint(save_direct + '/test_historic_' + str(train_size) + '.h5', monitor='loss', mode='min',
+                         save_best_only=True)
+
     if model_load == False:
         pass
     else:
         model.load_weights(save_direct+'/test_historic_'+str(train_size - learning_period)+'.h5')
 
-    model.fit(np.array(features), np.array(labels), epochs=iterations, verbose=0, callbacks=[TqdmCallback(verbose=1)])
+    model.fit(np.array(features), np.array(labels), epochs=iterations, verbose=0, callbacks=[TqdmCallback(verbose=0), early_stopping, mc])
 
     model.save_weights(save_direct+'/test_historic_'+str(train_size)+'.h5')
 
 if __name__ == '__main__':
 
-    basedir = 'C:/pythonProject_tf/textAnalysis'
+    basedir = 'C:/Users/admin/PycharmProjects/pythonProject_tf_2'
     inputdata_direct = basedir + '/pickle_var/variables1.pkl'
     hist = 63
     learning_period = 21
     fwd_idx = 5
     iterations = 1024
     update_period = 32
-    save_direct = basedir + '/weights/DNN_Softmax/weights1'
+    save_direct = basedir + '/weights/dnn/weights1'
 
     with open(inputdata_direct, 'rb') as f:
         arr = pickle.load(f)
@@ -109,7 +117,7 @@ if __name__ == '__main__':
     arr['Label'] = arr['KospiDeT'].rolling(fwd_idx).apply(labeling).shift(-4)
     arr = arr.dropna()
     firsttime = True
-    for idx in range(500, len(arr), learning_period):
+    for idx in range(756, len(arr), learning_period):
         if firsttime == True:
             model_load = False
             firsttime = False
