@@ -69,13 +69,14 @@ def DNN_Classify(train_data,
                       ):
 
     variables = train_data.iloc[:train_size].copy()
+    labels = torch.as_tensor(variables.Label.iloc[hist:].copy().values)
+    labels = torch.nn.functional.one_hot(labels.long())
+    variables = variables.drop('Label', axis=1).copy()
     scaler.fit(variables)
-    _, features = preprocFeatures(variables.drop('Label', axis=1).copy())
+    _, features = preprocFeatures(variables)
     #gainArr = gainArr.values.tolist()[hist:]
 
     features = flattenSeries(features,hist)
-    labels = torch.as_tensor(variables.Label.iloc[hist:].copy().values)
-    labels = torch.nn.functional.one_hot(labels.long())
 
     inputdim = len(features[-1])
     #model_load = False
