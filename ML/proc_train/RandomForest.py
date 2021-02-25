@@ -48,7 +48,9 @@ def RandomForestTrain(arr, train_size):
     model = xgb.XGBClassifier(max_depth=5,
                                 colsample_bytree=0.8,
                                 subsample=0.3,
-                                n_estimators=1024)
+                                n_estimators=1024,
+                                use_label_encoder=False
+                              )
     modelGrid = GridSearchCV(model,
                                 {'max_depth':[3,5,10]
                                 }, verbose=0)
@@ -60,11 +62,11 @@ def RandomForestTrain(arr, train_size):
 
 if __name__ == '__main__':
 
-    basedir = 'C:/pythonProject_tf/textAnalysis'
-    inputdata_direct = basedir+ '/pickle_var/variables1_2.pkl'
+    basedir = 'C:/Users/admin/PycharmProjects/pythonProject_tf_2'
+    inputdata_direct = basedir+ '/pickle_var/variables1.pkl'
     learning_period = 21
     fwd_idx = 5
-    save_direct = basedir + '/weights/randomforest/weights1_2'
+    save_direct = basedir + '/weights/randomforest/weights1'
 
     with open(inputdata_direct, 'rb') as f:
         arr = pickle.load(f)
