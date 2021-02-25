@@ -5,7 +5,10 @@ import pickle
 import random
 from tqdm import tqdm
 import os
+import matplotlib.pyplot as plt
+from sklearn.model_selection import KFold, train_test_split, GridSearchCV
 from sklearn.preprocessing import StandardScaler
+from sklearn.metrics import accuracy_score, confusion_matrix, classification_report
 scaler = StandardScaler()
 
 def get_variables(train_size,direct):
@@ -34,31 +37,34 @@ def RandomForestTrain(arr, train_size):
     scaler.fit(features)
     gainArr, features = preprocFeatures(features)
 
-    params = {
-        'max_depth':len(features[-1]),
-        'min_child_weight':1,
-        'eta':0.3,
-        'subsample':1,
-        'colsample_bytree':1,
-    }
+    '''params = {
+        'objective':'binary:logistic',
+        'max_depth':5,
+        'n_estimators':150,
+        'subsample':0.4
+    }'''
 
-    early_stop = xgb.callback.EarlyStopping(rounds=10)
+    train_data_x, test_data_x, train_data_y, test_data_y = train_test_split(features, labels, test_size=0.3)
+    model = xgb.XGBClassifier(max_depth=5,
+                                colsample_bytree=0.8,
+                                subsample=0.3,
+                                n_estimators=1024)
+    modelGrid = GridSearchCV(model,
+                                {'max_depth':[3,5,10]
+                                }, verbose=0)
+    modelGrid.fit(train_data_x,train_data_y,early_stopping_rounds=100, eval_metric='auc',eval_set=[(test_data_x,test_data_y)], verbose=0)
+    bestmodel = modelGrid.best_estimator_
+    #model.fit(train_data_x,train_data_y,early_stopping_rounds=10, eval_metric='auc',eval_set=[(test_data_x,test_data_y)])
 
-    dataTrain = xgb.DMatrix(data=features,label=labels)
-    num_boost_round = 16
-
-    model = xgb.train(
-        params, dtrain=dataTrain)#, callbacks=[early_stop])
-
-    model.save_model(save_direct + '/test_historic_' + str(train_size) + '.model')
+    pickle.dump(bestmodel, open(save_direct + '/test_historic_' + str(train_size) + '.pkl','wb'))
 
 if __name__ == '__main__':
 
     basedir = 'C:/pythonProject_tf/textAnalysis'
-    inputdata_direct = basedir+ '/pickle_var/variables1.pkl'
+    inputdata_direct = basedir+ '/pickle_var/variables1_2.pkl'
     learning_period = 21
     fwd_idx = 5
-    save_direct = basedir + '/weights/randomforest/weights1'
+    save_direct = basedir + '/weights/randomforest/weights1_2'
 
     with open(inputdata_direct, 'rb') as f:
         arr = pickle.load(f)
@@ -67,11 +73,12 @@ if __name__ == '__main__':
     arr['Label'] = arr['KospiDeT'].rolling(fwd_idx).apply(labeling).shift(-4)
     arr = arr.dropna()
     firsttime = True
-    for idx in range(756, len(arr), learning_period):
-        if firsttime == True:
-            model_load = False
-            firsttime = False
-        else:
-            model_load = True
+    with tqdm(range(756, len(arr), learning_period)) as tqd:
+        for idx in tqd:
+            if firsttime == True:
+                model_load = False
+                firsttime = False
+            else:
+                model_load = True
 
-        RandomForestTrain(arr, idx)
+            RandomForestTrain(arr, idx)
