@@ -28,45 +28,6 @@ def get_mainvariables(test_size, var_dir):
     arr = arr[test_size:]
     return arr
 
-def stepBinary(a, arr, arr_idx, fwd_idx):
-
-    gain = arr[arr_idx+fwd_idx] - arr[arr_idx]
-    if a == 1:
-        r = gain
-    else:
-        r = -gain
-    return r
-
-def stepTernary(a, arr, arr_idx, fwd_idx):
-
-    gain = arr[arr_idx+fwd_idx] - arr[arr_idx]
-    if a == 1: # Bull
-        r = gain
-    elif a == 0.5: # Neutral
-        r = 0
-    else:
-        r = -gain
-
-    return r
-
-def VoteToStep(actions, history_rewards, arr, arr_idx, fwd_idx):
-
-    np_rewards = np.array(history_rewards)
-    weighted_actions = np_rewards[-12:,].sum(axis=0)
-    #act_rew_raw = pd.DataFrame(np.transpose(np.vstack([np.array(actions),weighted_actions])))
-    #grouped_act_rew = act_rew_raw.groupby(act_rew_raw[0]).sum()
-    #actions_list = grouped_act_rew.index.values
-    #actions_weight = grouped_act_rew[1].values
-    #a = random.choices(actions_list, weights=actions_weight)[0]
-    a = random.choices(actions, weights=weighted_actions)[0]
-    r = stepTernary(a, arr, arr_idx, fwd_idx)
-    group_r = []
-    for action in actions:
-        temp_r = stepTernary(action, arr, arr_idx, fwd_idx)
-        group_r.append(temp_r)
-    #weighted_a = np.mean(actions)
-    return a, r, group_r
-
 def loadModel_RndFst(weight_dir, extension, idx):
     model_loaded = False
     loc_num = 0
@@ -143,6 +104,54 @@ def scalize_variable(variables, hist, idx):
 
     return s, local_s
 
+def stepBinary(a, arr, arr_idx, fwd_idx):
+
+    gain = arr[arr_idx+fwd_idx] - arr[arr_idx]
+    if a == 1:
+        r = gain
+    else:
+        r = -gain
+    return r
+
+def stepTernary(a, arr, arr_idx, fwd_idx):
+
+    gain = arr[arr_idx+fwd_idx] - arr[arr_idx]
+    if a == 1: # Bull
+        r = gain
+    elif a == 0.5: # Neutral
+        r = 0
+    else:
+        r = -gain
+
+    return r
+
+def VoteToStep(actions, history_rewards, arr, arr_idx, fwd_idx):
+
+    sum_range = 4
+    gamma = 1
+    gamma_arr = np.ones(sum_range)
+    for idx in range(sum_range):
+        gamma_arr[idx] = gamma_arr[idx] * (gamma**idx)
+    gamma_arr = gamma_arr[::-1]
+
+    np_rewards = np.array(history_rewards)
+    weighted_actions = np_rewards[-sum_range:,]
+    #act_rew_raw = pd.DataFrame(np.transpose(np.vstack([np.array(actions),weighted_actions])))
+    #grouped_act_rew = act_rew_raw.groupby(act_rew_raw[0]).sum()
+    #actions_list = grouped_act_rew.index.values
+    #actions_weight = grouped_act_rew[1].values
+    #a = random.choices(actions_list, weights=actions_weight)[0]
+    weighted_actions = weighted_actions*gamma_arr[-len(weighted_actions):][0]
+    weighted_actions = weighted_actions.sum(axis=0)
+    a = random.choices(actions, weights=weighted_actions)[0]
+    r = stepTernary(a, arr, arr_idx, fwd_idx)
+    group_r = []
+    for action in actions:
+        temp_r = stepTernary(action, arr, arr_idx, fwd_idx)
+        group_r.append(temp_r)
+    #weighted_a = np.mean(actions)
+    return a, r, group_r
+
 
 def VoteCounsel(s2, local_s2, s3, local_s3, idx, inputdim2, inputdim3):
 
@@ -194,7 +203,7 @@ learning_period = 21
 fwd_idx = 5
 hist = 63
 
-dir = 'C:/pythonProject_tf/textAnalysis'
+dir = 'C:/Users/admin/PycharmProjects/pythonProject_tf_2'
 mainvar_dir = dir + '/pickle_var/variables.pkl'
 var_dir1_2 = dir + '/pickle_var/variables1_2.pkl'
 var_dir1_3 = dir + '/pickle_var/variables1_3.pkl'
@@ -234,6 +243,7 @@ final_port = pd.DataFrame(total_memory[0],index=main_variables[:-1].index)
 final_port['Kospi'] = main_variables.Kospi.copy()
 final_port[1] = final_port[1] + final_port.Kospi[0]
 
+pickle.dump(final_port, open(dir+ '/final_port.pkl','wb'))
 final_port[1].plot()
 final_port.Kospi.plot()
 final_port[0].plot(secondary_y=True)
