@@ -1,0 +1,177 @@
+import numpy as np
+import pickle
+import tensorflow as tf
+import random
+from tqdm import tqdm
+import os
+import os.path
+import datetime
+from sklearn.preprocessing import StandardScaler
+import multiprocessing
+
+scaler = StandardScaler()
+os.environ["CUDA_VISIBLE_DEVICES"] = "-1"
+
+def preprocFeatures(arr):
+    gainArr = arr.iloc[:, 0].copy()
+    scaled_arr = scaler.transform(arr)
+    return gainArr, scaled_arr
+
+
+def get_variables(train_size, direct):
+    with open(direct, 'rb') as f:
+        arr = pickle.load(f)
+    arr = arr[:train_size]
+    return arr.values.tolist()
+
+
+def discount_rewards(r, random_rate):
+    discounted_r = np.zeros_like(r)
+    for t in range(0, r.size):  # give more weight one recent value
+        discounted_r[t] = r[t] / r.std()
+    for t in range(0, r.size):
+        discounted_r[t] = random.choices([discounted_r[t], -discounted_r[t]], weights=[1000 - random_rate, random_rate],
+                                         k=1)
+        # give false information to escape from false local optimal
+    return discounted_r
+
+
+def step(a, arr, arr_idx, fwd_idx):
+    gain = arr[arr_idx + fwd_idx] - arr[arr_idx]
+    if a == 2:  # Bull
+        r = gain
+    elif a == 1:  # Neutral
+        r = -gain / 100
+    else:  # Bear
+        r = -gain
+    return r
+
+
+def reinforceLearning(train_date):
+
+    basedir = 'C:/Users/admin/PycharmProjects/pythonProject_tf_2'
+    hist = 126
+    iterations = 10001
+    update_period = 50
+
+    learning_range = 756
+    save_direct = basedir + '/weights/reinforcestd_rolling/' + str(learning_range)
+
+    if os.path.isfile(save_direct + '/test_historic_' + str(train_date) + '.h5'):
+        return
+
+    inputdata_direct = basedir+ '/pickle_var/variables/variablesEnS' + str(train_date) + '.pkl'
+    with open(inputdata_direct, 'rb') as f:
+        variables = pickle.load(f)
+
+    scaler.fit(variables)
+    gainArr, variables = preprocFeatures(variables)
+    variables = variables.tolist()
+    gainArr = gainArr.values.tolist()
+
+    former_mean = 0
+    random_rate = 1
+    inputdim = hist * len(variables[-1])
+
+    model = tf.keras.Sequential()
+    model.add(tf.keras.layers.Dense(252, input_dim=inputdim, activation='relu'))
+    model.add(tf.keras.layers.Dense(126, activation='relu'))
+    model.add(tf.keras.layers.Dense(63, activation='relu'))
+    model.add(tf.keras.layers.Dense(3, activation='softmax'))
+    optimizer = tf.keras.optimizers.Adam(learning_rate=0.001)
+    compute_loss = tf.keras.losses.SparseCategoricalCrossentropy(from_logits=True)
+
+    gradBuffer = model.trainable_variables
+    for ix, grad in enumerate(gradBuffer):
+        gradBuffer[ix] = grad * 0
+
+    scores = []
+    iter_log = []
+    with tqdm(range(iterations)) as tqd:
+        for iter in tqd:
+
+            memory = []
+            score = 0
+            if learning_range == 'all':
+                startpoint = hist + random.randrange(0, int(hist/2))
+            else:
+                startpoint = max(len(variables) - learning_range + random.randrange(0, int(hist/2)),
+                                 hist + random.randrange(0, int(hist/2)))
+
+            fwd_idx = 5
+
+            for idx in range(startpoint, len(variables) - fwd_idx, fwd_idx):
+                s = tf.expand_dims(np.concatenate(variables[idx - hist:idx], axis=None), 0)
+                if idx + fwd_idx >= len(variables):
+                    break
+                with tf.GradientTape() as tape:
+                    logits = model(s)
+                    a_dist = logits.numpy()
+                    a = np.random.choice(a_dist[0], p=a_dist[0])
+                    a = np.argmax(a_dist == a)
+                    loss = compute_loss([a], logits)
+                grads = tape.gradient(loss, model.trainable_variables)
+                r = step(a, gainArr, idx, fwd_idx)
+                score += r
+                memory.append([grads, r])
+
+            scores.append(score)
+            memory = np.array(memory)
+            memory[:, 1] = discount_rewards(memory[:, 1], random_rate)
+
+            for grads, r in memory:
+                for ix, grad in enumerate(grads):
+                    gradBuffer[ix] += grad * r
+
+            if iter % update_period == 0:
+
+                EarlyStopped = False
+                if iter > 200 and np.std(scores[-100:]) >= np.std(scores[-200:-100]) and np.mean(scores[-100:]) <= np.mean(
+                        scores[-200:-100]):
+                    EarlyStopped = True
+                    break
+
+                tqd.set_postfix(Time=train_date, Score=np.mean(scores[-100:]), STD=np.std(scores[-100:]),
+                                MAX=np.max(scores[-100:]), Min=np.min(scores[-100:]), ES=EarlyStopped)
+                iter_log.append("{} Learning  {}  Score  {}   Var  {}   Max  {}   Min  {}   ES  {}"
+                                .format(train_date, iter, np.mean(scores[-100:]), np.std(scores[-100:]),
+                                        np.max(scores[-100:]), np.min(scores[-100:]), EarlyStopped))
+                if former_mean == np.mean(scores[-50:]):
+                    random_rate = 100
+                else:
+                    random_rate = 1
+                former_mean = np.mean(scores[-50:])
+
+            if iter % update_period == 0:
+                optimizer.apply_gradients(zip(gradBuffer, model.trainable_variables))
+                for ix, grad in enumerate(gradBuffer):
+                    gradBuffer[ix] = grad * 0
+
+            #if iter % 400 == 0:
+            #    model.save_weights(save_direct + '/test_historic_' + str(train_size) + '.h5')
+
+    model.save_weights(save_direct + '/test_historic_' + str(train_date) + '.h5')
+    with open(save_direct + '/log' + str(train_date) + '.txt', 'w') as f:
+        for line in iter_log:
+            f.write(str(line) + '\n')
+
+
+if __name__ == '__main__':
+
+    model_load = False
+
+    list = os.listdir('C:/Users/admin/PycharmProjects/pythonProject_tf_2/pickle_var/variables')
+    new_list = []
+    new_list.append(list[0].replace('variablesEnS','').replace('.pkl',''))
+    new_list.append(list[0].replace('variablesEnS','').replace('.pkl',''))
+    for el in list:
+        new_el = el.replace('variablesEnS','').replace('.pkl','')
+        if int(new_el[-2:]) >= int(new_list[-1][-2:]):
+            new_list[-1] = new_el
+        else:
+            new_list.append(new_el)
+
+    BaseDate = datetime.datetime.strptime('2012-03-16', '%Y-%m-%d')
+
+    pool = multiprocessing.Pool(7)
+    pool.map(reinforceLearning, new_list)
